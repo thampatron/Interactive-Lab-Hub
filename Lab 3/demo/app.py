@@ -11,6 +11,7 @@ import busio
 import adafruit_mpu6050
 import json
 import socket
+import digitalio
 
 import signal
 import sys
@@ -18,10 +19,16 @@ from queue import Queue
 
  
 i2c = busio.I2C(board.SCL, board.SDA)
-mpu = adafruit_mpu6050.MPU6050(i2c)
+#mpu = adafruit_mpu6050.MPU6050(i2c)
 
 hostname = socket.gethostname()
 hardware = 'plughw:2,0'
+
+buttonA = digitalio.DigitalInOut(board.D23)
+buttonB = digitalio.DigitalInOut(board.D24)
+buttonA.switch_to_input()
+buttonB.switch_to_input()
+
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -29,7 +36,9 @@ audio_stream = Popen("/usr/bin/cvlc alsa://"+hardware+" --sout='#transcode{vcode
 
 @socketio.on('speak')
 def handel_speak(val):
+
     call(f"espeak '{val}'", shell=True)
+    
 
 @socketio.on('connect')
 def test_connect():
@@ -38,13 +47,15 @@ def test_connect():
 
 @socketio.on('ping-gps')
 def handle_message(val):
-    # print(mpu.acceleration)
-    emit('pong-gps', mpu.acceleration) 
+    if not buttonA.value or not buttonB.value:
+       print("Ready to start!")
+    
 
 
 
 @app.route('/')
 def index():
+    
     return render_template('index.html', hostname=hostname)
 
 def signal_handler(sig, frame):
