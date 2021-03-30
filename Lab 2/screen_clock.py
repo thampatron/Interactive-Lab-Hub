@@ -30,6 +30,46 @@ disp = st7789.ST7789(
     y_offset=40,
 )
 
+def showBaby():
+
+	# Make sure to create image with mode 'RGB' for full color.
+	if disp.rotation % 180 == 90:
+    		height = disp.width  # we swap height/width to rotate it to landscape!
+    		width = disp.height
+	else:
+    		width = disp.width  # we swap height/width to rotate it to landscape!
+    		height = disp.height
+	image = Image.new("RGB", (width, height))
+
+# Get drawing object to draw on image.
+	draw = ImageDraw.Draw(image)
+  # Draw a black filled box to clear the image.
+	draw.rectangle((0, 0, width, height), outline=0, fill=(0, 0, 0))
+	disp.image(image)
+
+	image = Image.open("/home/pi/Interactive-Lab-Hub/baby-photo.jpg")
+	backlight = digitalio.DigitalInOut(board.D22)
+	backlight.switch_to_output()
+	backlight.value = True
+
+
+	# Scale the image to the smaller screen dimension
+	image_ratio = image.width / image.height
+	screen_ratio = width / height
+	if screen_ratio < image_ratio:
+	    scaled_width = image.width * height // image.height
+	    scaled_height = height
+	else:
+	    scaled_width = width
+	    scaled_height = image.height * width // image.width
+	image = image.resize((scaled_width, scaled_height), Image.BICUBIC)
+
+	# Crop and center the image
+	x = scaled_width // 2 - width // 2
+	y = scaled_height // 2 - height // 2
+	image = image.crop((x, y, x + width, y + height))
+	disp.image(image)
+
 # Create blank image for drawing.
 # Make sure to create image with mode 'RGB' for full color.
 height = disp.width  # we swap height/width to rotate it to landscape!
@@ -60,16 +100,34 @@ font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 18)
 backlight = digitalio.DigitalInOut(board.D22)
 backlight.switch_to_output()
 backlight.value = True
+count = 0
 
 while True:
     # Draw a black filled box to clear the image.
-    draw.rectangle((0, 0, width, height), outline=0, fill=0)
+    if count % 8 == 0:
+        showBaby()
+    else:
+        draw.rectangle((0, 0, width, height), outline=0, fill=0)
+        
+        sec = int(strftime("%S"))
+        min = int(strftime("%M"))
+        hou = int(strftime("%H"))
+        babies = int((sec + min*60 + hou*60*60)/8)
+
+        text = "Babies born today: " + str(babies)
+        draw.text((x,top), text, font=font)
+        text = "New baby in " + str((8-count%8)) + "..."
+        draw.text((x,font.getsize(text)[1]), text, font=font)
+
+
+        w = (width/8)*(count%8)
+        draw.rectangle((0,2*font.getsize(text)[1],w,height), outline=0,fill="#e5eb34")
+
 
     #TODO: fill in here. You should be able to look in cli_clock.py and stats.py 
-    text = strftime("%m/%d/%Y")
-    draw.text((x,top), text, font=font)
-    hour = strftime("%H:%M:%S")
-    draw.text((x,font.getsize(text)[1]), hour, font=font)
+        
 # Display image
-    disp.image(image, rotation)
+        disp.image(image, rotation)
+    	
     time.sleep(1)
+    count+=1
